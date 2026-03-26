@@ -1,1 +1,601 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Código de Símbolos e Dígitos</title>
+  <style>
+    * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
+    body { margin: 0; padding: 20px; background: #f4f6fb; color: #1f2937; }
+    .container {
+      max-width: 1180px; margin: 0 auto; background: #fff; border-radius: 16px;
+      padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    }
+    h1 { margin: 0 0 10px; font-size: 30px; }
+    .subtitle { line-height: 1.5; margin-bottom: 16px; font-size: 18px; }
+
+    .status-box {
+      display: none; margin-bottom: 16px; padding: 16px; border-radius: 12px; border: 1px solid #dbeafe; background: #f8fafc;
+    }
+    .status-box.show { display: block; }
+    .status-box.loading { background: #eff6ff; border-color: #bfdbfe; }
+    .status-box.ok { background: #ecfdf5; border-color: #86efac; }
+    .status-box.err { background: #fef2f2; border-color: #fca5a5; }
+    .status-box.warn { background: #fffbeb; border-color: #fcd34d; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .scoreboard { display: flex; gap: 10px; flex-wrap: wrap; }
+    .card {
+      min-width: 170px; padding: 12px 14px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px;
+    }
+    .card .label { font-size: 12px; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .4px; }
+    .card .value { font-size: 26px; font-weight: bold; }
+
+    .key-panel, .answer-panel, .result-panel {
+      border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; background: #fff; margin-bottom: 18px;
+    }
+    .sheet-title { font-size: 24px; font-weight: bold; margin: 0 0 16px; }
+
+    .key-grid { display: grid; grid-template-columns: repeat(9, minmax(58px, 1fr)); gap: 10px; }
+    .key-item { border: 2px solid #222; border-radius: 4px; overflow: hidden; background: #fff; }
+    .digit-cell, .symbol-cell { height: 42px; display: flex; align-items: center; justify-content: center; }
+    .digit-cell { border-bottom: 2px solid #222; font-size: 20px; font-weight: bold; }
+    .symbol-cell { height: 54px; }
+
+    .page-grid {
+      display: grid; grid-template-columns: repeat(20, 1fr); gap: 0; width: 100%;
+      border-top: 1.5px solid #222; border-left: 1.5px solid #222;
+    }
+    .cell-number, .cell-answer {
+      border-right: 1.5px solid #222; border-bottom: 1.5px solid #222;
+      display: flex; align-items: center; justify-content: center; background: #fff;
+    }
+    .cell-number { min-height: 52px; font-size: 28px; }
+    .cell-answer {
+      min-height: 56px; position: relative; transition: background .15s ease, box-shadow .15s ease;
+    }
+    .cell-answer.active {
+      background: #eff6ff;
+      box-shadow: inset 0 0 0 3px #2563eb;
+    }
+    .cell-answer.done { background: #fafafa; }
+    .cell-answer.example-correct { background: #ecfdf5; box-shadow: inset 0 0 0 3px #16a34a; }
+    .cell-answer.example-wrong { background: #fef2f2; box-shadow: inset 0 0 0 3px #dc2626; }
+
+    .symbol-row {
+      display: grid; grid-template-columns: repeat(9, minmax(60px, 1fr)); gap: 12px;
+      margin-top: 14px;
+    }
+    .symbol-btn {
+      min-height: 72px; border: 2px solid #d1d5db; background: #fff; border-radius: 12px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: transform .1s ease, border-color .15s ease, background .15s ease;
+    }
+    .symbol-btn:hover { transform: translateY(-1px); border-color: #94a3b8; }
+    .symbol-btn:active { transform: translateY(0); }
+    .symbol-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .actions-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .primary-btn {
+      appearance: none; border: 0; border-radius: 12px; padding: 14px 18px; font-size: 16px; font-weight: 700;
+      background: #2563eb; color: #fff; cursor: pointer;
+    }
+    .primary-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .example-note { color: #374151; font-size: 14px; }
+
+    .result-panel h2 { margin-top: 0; }
+    .small-note { color: #6b7280; font-size: 14px; line-height: 1.5; }
+    .hidden { display: none !important; }
+
+    svg.symbol-svg { width: 28px; height: 28px; overflow: visible; }
+    .thin-stroke { stroke: #111; stroke-width: 2.6; fill: none; stroke-linecap: square; stroke-linejoin: miter; }
+
+    @media (max-width: 980px) {
+      body { padding: 12px; }
+      .container { padding: 14px; }
+      .key-grid { grid-template-columns: repeat(3, minmax(58px, 1fr)); }
+      .page-grid { overflow-x: auto; display: grid; min-width: 840px; }
+      .answer-panel { overflow-x: auto; }
+      .symbol-row { grid-template-columns: repeat(3, minmax(60px, 1fr)); }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+   
+
+    <div id="statusBox" class="status-box show">Validando acesso...</div>
+
+    <div id="formWrap" class="hidden">
+      
+      <div id="uiHelpers" class="hidden">
+        <span id="pageInfo"></span>
+        <span id="timerValue"></span>
+        <span id="answeredValue"></span>
+        <span id="partialScoreValue"></span>
+        <span id="exampleNote"></span>
+      </div>
+
+      
+
+      <div class="key-panel">
+        <div class="sheet-title">Chave</div>
+        <div class="key-grid" id="keyGrid"></div>
+      </div>
+
+      <div class="answer-panel">
+        <div class="sheet-title">Preencha os itens</div>
+        <div id="pageWrap"></div>
+        <div class="symbol-row" id="palette"></div>
+        <div class="actions-row">
+          
+          <button id="startTestBtn" type="button" class="primary-btn hidden">Iniciar teste</button>
+        </div>
+      </div>
+
+      <div id="resultPanel" class="result-panel hidden"></div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://ydypdeafbcdcamwigjuq.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_lg9teAniku65cd2dnZJvIQ_Zii0XneZ";
+    const TEST_CODE_FIXO = "CODIGO_WAISIII_V2";
+    const AREA_PACIENTE_URL = "https://integradaneuropsicologia.github.io/area-do-paciente-v2/";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const $ = (id) => document.getElementById(id);
+
+    const NUMBER_SEQUENCE = [
+  2,1,3,7,2,4,8,2,1,3,2,1,4,2,3,5,2,3,1,4,
+  5,6,3,1,4,1,5,4,2,7,6,3,5,7,2,8,5,4,6,3,
+  7,2,8,1,9,5,8,4,7,3,6,2,5,1,9,2,8,3,7,4,
+  6,5,9,4,8,3,7,2,6,1,5,4,6,3,7,9,2,8,1,7,
+  9,4,6,8,5,9,7,1,8,5,2,9,4,8,6,3,7,9,8,6,
+  2,7,3,6,5,1,9,8,4,5,7,3,1,4,8,7,9,1,4,5,
+  7,1,8,2,9,3,6,7,2,8,5,2,3,1,4,8,4,2,7,6
+];
+    const ITEMS_PER_PAGE = 20;
+    const EXAMPLE_LAST_INDEX = 6;
+    const SCORE_START_INDEX = 7;
+    const TIME_LIMIT_SECONDS = 120;
+    const TIME_LIMIT_MS = TIME_LIMIT_SECONDS * 1000;
+
+    const appState = {
+      started: false,
+      finished: false,
+      exampleReviewed: false,
+      startTime: null,
+      timerInterval: null,
+      finishTimeout: null,
+      activeIndex: 0,
+      currentPage: 0,
+      responses: Array(NUMBER_SEQUENCE.length).fill(null),
+      paletteOrder: shuffle([1,2,3,4,5,6,7,8,9])
+    };
+
+    function shuffle(arr) {
+      const out = [...arr];
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out;
+    }
+
+    function setStatus(text, type = "loading") {
+      const el = $("statusBox");
+      el.innerHTML = text;
+      el.className = `status-box show ${type}`;
+    }
+
+    function normalizeCPF(cpf) { return String(cpf || "").replace(/\D/g, ""); }
+    function getCpfFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const cpfParam = params.get("cpf");
+      if (cpfParam) return normalizeCPF(cpfParam);
+      const raw = window.location.search.replace("?", "").trim();
+      if (/^\d{11}$/.test(raw)) return raw;
+      return "";
+    }
+    function getTestCodeFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("code") || TEST_CODE_FIXO;
+    }
+    function isObject(v) { return v && typeof v === "object" && !Array.isArray(v); }
+    function containsTestCode(jsonb, testCode) {
+      if (!jsonb) return false;
+      if (typeof jsonb === "string") return jsonb === testCode;
+      if (Array.isArray(jsonb)) return jsonb.some(item => typeof item === "string" ? item === testCode : isObject(item) && (item.code === testCode || item.test_code === testCode || item.id === testCode || containsTestCode(item, testCode)));
+      if (isObject(jsonb)) {
+        if (Object.prototype.hasOwnProperty.call(jsonb, testCode)) {
+          const value = jsonb[testCode];
+          return value !== false && value !== null && value !== undefined;
+        }
+        if (jsonb.code === testCode || jsonb.test_code === testCode || jsonb.id === testCode) return true;
+        return Object.values(jsonb).some(v => containsTestCode(v, testCode));
+      }
+      return false;
+    }
+    function isTestLiberado(testsLiberados, testCode) {
+      if (!containsTestCode(testsLiberados, testCode)) return false;
+      if (isObject(testsLiberados) && Object.prototype.hasOwnProperty.call(testsLiberados, testCode)) {
+        const v = testsLiberados[testCode];
+        if (typeof v === "boolean") return v;
+        if (isObject(v) && "liberado" in v) return Boolean(v.liberado);
+        if (typeof v === "string") return !["false", "0", "nao", "não"].includes(v.toLowerCase());
+        return Boolean(v);
+      }
+      return true;
+    }
+    function isTestFeito(testsFeitos, testCode) {
+      if (!containsTestCode(testsFeitos, testCode)) return false;
+      if (isObject(testsFeitos) && Object.prototype.hasOwnProperty.call(testsFeitos, testCode)) {
+        const v = testsFeitos[testCode];
+        if (typeof v === "boolean") return v;
+        if (isObject(v) && "feito" in v) return Boolean(v.feito);
+        if (typeof v === "string") return !["false", "0", "nao", "não"].includes(v.toLowerCase());
+        return Boolean(v);
+      }
+      return true;
+    }
+    function normalizeTestsFeitosForSave(current) {
+      const out = {};
+      if (!current) return out;
+      if (typeof current === "string") { out[current] = { feito: true }; return out; }
+      if (Array.isArray(current)) {
+        current.forEach(item => {
+          if (typeof item === "string") out[item] = { feito: true };
+          else if (isObject(item)) {
+            const code = item.code || item.test_code || item.id;
+            if (code) out[code] = { ...item, feito: ("feito" in item) ? Boolean(item.feito) : true };
+          }
+        });
+        return out;
+      }
+      if (isObject(current)) {
+        Object.entries(current).forEach(([key, value]) => {
+          if (typeof value === "boolean") out[key] = { feito: value };
+          else if (typeof value === "string") out[key] = { feito: !["false", "0", "nao", "não"].includes(value.toLowerCase()) };
+          else if (isObject(value)) out[key] = { ...value };
+          else out[key] = { feito: Boolean(value) };
+        });
+      }
+      return out;
+    }
+    function buildUpdatedTestsFeitos(currentTestsFeitos, testCode, submittedAtIso) {
+      const next = normalizeTestsFeitosForSave(currentTestsFeitos);
+      next[testCode] = { ...(isObject(next[testCode]) ? next[testCode] : {}), feito: true, submitted_at: submittedAtIso };
+      return next;
+    }
+    function redirectToAreaPaciente(cpf) { window.location.href = `${AREA_PACIENTE_URL}?${cpf}`; }
+
+    async function validarAcessoAoTeste() {
+      const cpf = getCpfFromUrl();
+      const testCode = getTestCodeFromUrl();
+      if (!cpf || cpf.length !== 11) { setStatus("CPF inválido ou ausente na URL.", "err"); return false; }
+      if (!testCode) { setStatus("Código do teste não informado.", "err"); return false; }
+
+      setStatus("Consultando liberação do teste...", "loading");
+
+      const { data, error } = await supabaseClient.from("patients").select("cpf, tests_liberados, tests_feitos").eq("cpf", cpf).maybeSingle();
+      if (error) { setStatus("Erro ao consultar a base de dados.", "err"); return false; }
+      if (!data) { setStatus("CPF não encontrado.", "err"); return false; }
+
+      if (!isTestLiberado(data.tests_liberados, testCode)) { setStatus("Teste não liberado.", "warn"); return false; }
+      if (isTestFeito(data.tests_feitos, testCode)) {
+        setStatus("Teste já realizado. Redirecionando...", "ok");
+        setTimeout(() => redirectToAreaPaciente(cpf), 700);
+        return false;
+      }
+
+      setStatus("Teste liberado.", "ok");
+      $("formWrap").classList.remove("hidden");
+      return true;
+    }
+
+    function symbolSVG(n) {
+      const common = 'class="thin-stroke"';
+      const map = {
+        1: `<svg class="symbol-svg" viewBox="0 0 24 24" aria-hidden="true"><line ${common} x1="5" y1="12" x2="19" y2="12"></line></svg>`,
+        2: `<svg class="symbol-svg" viewBox="0 0 24 24" aria-hidden="true"><line ${common} x1="12" y1="4" x2="12" y2="18"></line><line ${common} x1="5" y1="18" x2="19" y2="18"></line></svg>`,
+        3: `<svg class="symbol-svg" viewBox="0 0 24 24" aria-hidden="true"><path ${common} d="M6 6 H18 V18 H6"></path></svg>`,
+        4: `<svg class="symbol-svg" viewBox="0 0 24 24" aria-hidden="true"><path ${common} d="M6 6 V18 H18"></path></svg>`,
+        5: `<svg class="symbol-svg" viewBox="0 0 24 24" aria-hidden="true"><path ${common} d="M6 6 V18 H18 V6"></path></svg>`,
+        6: `<svg class="symbol-svg" viewBox="0 0 24 24" aria-hidden="true"><circle ${common} cx="12" cy="12" r="7"></circle></svg>`,
+        7: `<svg class="symbol-svg" viewBox="0 0 24 24" aria-hidden="true"><path ${common} d="M6 18 L12 6 L18 18"></path></svg>`,
+        8: `<svg class="symbol-svg" viewBox="0 0 24 24" aria-hidden="true"><line ${common} x1="6" y1="6" x2="18" y2="18"></line><line ${common} x1="18" y1="6" x2="6" y2="18"></line></svg>`,
+        9: `<svg class="symbol-svg" viewBox="0 0 24 24" aria-hidden="true"><line ${common} x1="5" y1="9" x2="19" y2="9"></line><line ${common} x1="5" y1="15" x2="19" y2="15"></line></svg>`
+      };
+      return map[n];
+    }
+
+    function renderKey() {
+      $("keyGrid").innerHTML = Array.from({ length: 9 }, (_, i) => {
+        const n = i + 1;
+        return `<div class="key-item"><div class="digit-cell">${n}</div><div class="symbol-cell">${symbolSVG(n)}</div></div>`;
+      }).join("");
+    }
+
+    function getPageStart(page) { return page * ITEMS_PER_PAGE; }
+    function getPageEnd(page) { return Math.min(NUMBER_SEQUENCE.length, getPageStart(page) + ITEMS_PER_PAGE); }
+
+    function renderCurrentPage() {
+      const start = getPageStart(appState.currentPage);
+      const end = getPageEnd(appState.currentPage);
+      const numbers = NUMBER_SEQUENCE.slice(start, end);
+      const pageWrap = $("pageWrap");
+
+      let html = '<div class="page-grid">';
+      numbers.forEach(n => { html += `<div class="cell-number">${n}</div>`; });
+      numbers.forEach((_, offset) => {
+        const idx = start + offset;
+        const value = appState.responses[idx];
+        const classes = ['cell-answer'];
+        if (idx === appState.activeIndex && !appState.finished && canAnswerCurrentIndex(idx)) classes.push('active');
+        if (value !== null) classes.push('done');
+        if (appState.exampleReviewed && idx <= EXAMPLE_LAST_INDEX) {
+          classes.push(value === NUMBER_SEQUENCE[idx] ? 'example-correct' : 'example-wrong');
+        }
+        html += `<div class="${classes.join(' ')}" data-index="${idx}">${value !== null ? symbolSVG(value) : ''}</div>`;
+      });
+      html += '</div>';
+      pageWrap.innerHTML = html;
+
+      $("pageInfo").textContent = `Página ${appState.currentPage + 1} de ${Math.ceil(NUMBER_SEQUENCE.length / ITEMS_PER_PAGE)} · itens ${start + 1} a ${end}`;
+      updateCounters();
+      updateExampleUI();
+    }
+
+    function renderPalette() {
+      $("palette").innerHTML = appState.paletteOrder.map(n => {
+        return `<button type="button" class="symbol-btn" data-symbol="${n}" aria-label="Selecionar símbolo">${symbolSVG(n)}</button>`;
+      }).join("");
+      document.querySelectorAll('[data-symbol]').forEach(btn => {
+        btn.addEventListener('click', () => fillActiveCell(Number(btn.dataset.symbol)));
+      });
+      updatePaletteAvailability();
+    }
+
+    function canAnswerCurrentIndex(index) {
+      if (appState.finished) return false;
+      if (!appState.exampleReviewed) return index >= 0 && index <= EXAMPLE_LAST_INDEX && index === appState.activeIndex;
+      return appState.started && index === appState.activeIndex;
+    }
+
+    function updatePaletteAvailability() {
+      const disabled = appState.finished || (appState.exampleReviewed && !appState.started);
+      document.querySelectorAll('.symbol-btn').forEach(el => { el.disabled = disabled; });
+    }
+
+    function allExampleAnswered() {
+      for (let i = 0; i <= EXAMPLE_LAST_INDEX; i++) {
+        if (appState.responses[i] === null) return false;
+      }
+      return true;
+    }
+
+    function reviewExamples() {
+      appState.exampleReviewed = true;
+      appState.started = false;
+      appState.activeIndex = SCORE_START_INDEX;
+      appState.currentPage = 0;
+      renderCurrentPage();
+      updatePaletteAvailability();
+    }
+
+    function getElapsedSeconds() {
+      if (!appState.startTime) return 0;
+      return Math.min(TIME_LIMIT_SECONDS, Math.floor((Date.now() - appState.startTime) / 1000));
+    }
+
+    function updateTimerUI() {
+      if (!appState.started || appState.finished) {
+        $("timerValue").textContent = `${TIME_LIMIT_SECONDS}s`;
+        return;
+      }
+      const remaining = Math.max(0, TIME_LIMIT_SECONDS - getElapsedSeconds());
+      $("timerValue").textContent = `${remaining}s`;
+    }
+
+    function startTest() {
+      if (appState.started || appState.finished || !appState.exampleReviewed) return;
+      appState.started = true;
+      appState.startTime = Date.now();
+      updateTimerUI();
+      appState.timerInterval = setInterval(updateTimerUI, 250);
+      appState.finishTimeout = setTimeout(() => finishTest('tempo'), TIME_LIMIT_MS);
+      renderCurrentPage();
+      updatePaletteAvailability();
+    }
+
+    function stopTimers() {
+      clearInterval(appState.timerInterval);
+      clearTimeout(appState.finishTimeout);
+      appState.timerInterval = null;
+      appState.finishTimeout = null;
+    }
+
+    function findNextSequentialIndex(fromIndex) {
+      for (let i = fromIndex + 1; i < NUMBER_SEQUENCE.length; i++) {
+        if (appState.responses[i] === null) return i;
+      }
+      return -1;
+    }
+
+    function calculateScore() {
+      let score = 0;
+      const detailed = NUMBER_SEQUENCE.map((target, index) => {
+        const response = appState.responses[index];
+        const scored = index >= SCORE_START_INDEX;
+        const correct = response === target;
+        if (scored && response !== null && correct) score++;
+        return { item: index + 1, target, response, scored, correct: response !== null ? correct : null };
+      });
+      return { score, detailed };
+    }
+
+    function updateCounters() {
+      const answered = appState.responses.filter(v => v !== null).length;
+      $("answeredValue").textContent = `${answered} / ${NUMBER_SEQUENCE.length}`;
+      $("partialScoreValue").textContent = String(calculateScore().score);
+    }
+
+    function updateExampleUI() {
+      const note = $("exampleNote");
+      const btn = $("startTestBtn");
+
+      if (!appState.exampleReviewed) {
+        if (allExampleAnswered()) {
+          note.textContent = "Exemplos corrigidos: verde = certo, vermelho = errado.";
+          btn.classList.remove("hidden");
+          btn.textContent = "Iniciar teste";
+        } else {
+          note.textContent = "Complete os 7 itens de exemplo.";
+          btn.classList.add("hidden");
+        }
+      } else if (!appState.started) {
+        note.textContent = "Clique em iniciar teste para começar a parte valendo.";
+        btn.classList.remove("hidden");
+        btn.textContent = "Iniciar teste";
+      } else {
+        note.textContent = "Teste em andamento.";
+        btn.classList.add("hidden");
+      }
+    }
+
+    function fillActiveCell(symbolNumber) {
+      if (appState.finished) return;
+      if (!canAnswerCurrentIndex(appState.activeIndex)) return;
+
+      appState.responses[appState.activeIndex] = symbolNumber;
+
+      if (!appState.exampleReviewed) {
+        if (appState.activeIndex < EXAMPLE_LAST_INDEX) {
+          appState.activeIndex += 1;
+          appState.currentPage = Math.floor(appState.activeIndex / ITEMS_PER_PAGE);
+          renderCurrentPage();
+        } else {
+          reviewExamples();
+        }
+        return;
+      }
+
+      const nextIndex = findNextSequentialIndex(appState.activeIndex);
+      if (nextIndex === -1) {
+        renderCurrentPage();
+        finishTest('completo');
+        return;
+      }
+
+      appState.activeIndex = nextIndex;
+      appState.currentPage = Math.floor(nextIndex / ITEMS_PER_PAGE);
+      renderCurrentPage();
+    }
+
+    function showResultPanel(reason) {
+      const elapsedSeconds = appState.started ? getElapsedSeconds() : 0;
+      const result = calculateScore();
+      const panel = $("resultPanel");
+      panel.classList.remove('hidden');
+      panel.innerHTML = `
+        <h2>Teste finalizado</h2>
+        <p><strong>Motivo:</strong> ${reason === 'tempo' ? 'tempo esgotado' : 'todos os itens foram preenchidos'}</p>
+        <p><strong>Tempo contado:</strong> ${elapsedSeconds}s</p>
+        <p><strong>Itens respondidos:</strong> ${appState.responses.filter(v => v !== null).length} de ${NUMBER_SEQUENCE.length}</p>
+        <p><strong>Acertos válidos:</strong> ${result.score}</p>
+        <p class="small-note">A pontuação considera somente os acertos do item 8 em diante.</p>
+      `;
+    }
+
+    async function saveTestResult(reason) {
+      const cpf = getCpfFromUrl();
+      const testCode = getTestCodeFromUrl();
+      const submittedAt = new Date().toISOString();
+      const result = calculateScore();
+
+      const resultsPayload = result.detailed.map(item => ({
+        item: item.item,
+        target: item.target,
+        response: item.response,
+        scored: item.scored,
+        correct: item.correct
+      }));
+
+      const resultsMetaPayload = [
+        { key: 'Acertos a partir do item 8', value: result.score }
+      ];
+
+      const { data: patient, error: patientError } = await supabaseClient
+        .from('patients')
+        .select('cpf, tests_liberados, tests_feitos')
+        .eq('cpf', cpf)
+        .maybeSingle();
+
+      if (patientError) throw new Error('Erro ao consultar paciente.');
+      if (!patient) throw new Error('CPF não encontrado.');
+      if (!isTestLiberado(patient.tests_liberados, testCode)) throw new Error('Teste não liberado.');
+      if (isTestFeito(patient.tests_feitos, testCode)) { redirectToAreaPaciente(cpf); return; }
+
+      const { error: insertError } = await supabaseClient.from('respostas').insert([{ cpf, code: testCode, submitted_at: submittedAt, results: resultsPayload, results_meta: resultsMetaPayload }]);
+      if (insertError) throw new Error(`Erro ao salvar respostas: ${insertError.message || ''}`.trim());
+
+      const nextTestsFeitos = buildUpdatedTestsFeitos(patient.tests_feitos, testCode, submittedAt);
+      const { error: updateError } = await supabaseClient.from('patients').update({ tests_feitos: nextTestsFeitos }).eq('cpf', cpf);
+      if (updateError) throw new Error('Resposta salva, mas falhou ao marcar teste como feito.');
+
+      setStatus('Respostas enviadas com sucesso. Redirecionando...', 'ok');
+      setTimeout(() => redirectToAreaPaciente(cpf), 900);
+    }
+
+    async function finishTest(reason) {
+      if (appState.finished) return;
+      appState.finished = true;
+      stopTimers();
+      updateTimerUI();
+      showResultPanel(reason);
+      setStatus('Enviando resultado final...', 'loading');
+      updatePaletteAvailability();
+      $("startTestBtn").disabled = true;
+      try {
+        await saveTestResult(reason);
+      } catch (error) {
+        console.error(error);
+        setStatus(error?.message || 'Erro ao enviar resultado.', 'err');
+      }
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (appState.finished) return;
+      const key = event.key;
+      if (key >= '1' && key <= '9') {
+        event.preventDefault();
+        fillActiveCell(Number(key));
+      }
+    });
+
+    $("startTestBtn").addEventListener("click", () => {
+      if (!allExampleAnswered()) return;
+      if (!appState.exampleReviewed) {
+        reviewExamples();
+        return;
+      }
+      startTest();
+    });
+
+    validarAcessoAoTeste().then((ok) => {
+      if (!ok) return;
+      renderKey();
+      renderPalette();
+      renderCurrentPage();
+      updateTimerUI();
+    });
+  </script>
+</body>
+</html>
 
