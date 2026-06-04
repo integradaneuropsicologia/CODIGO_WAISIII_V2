@@ -608,14 +608,6 @@
       const submittedAt = new Date().toISOString();
       const result = calculateScore();
 
-      const resultsPayload = result.detailed.map(item => ({
-        item: item.item,
-        target: item.target,
-        response: item.response,
-        scored: item.scored,
-        correct: item.correct
-      }));
-
       const resultsMetaPayload = [
         { key: 'Acertos a partir do item 8', value: result.score }
       ];
@@ -631,7 +623,7 @@
       if (!isTestLiberado(patient.tests_liberados, testCode)) throw new Error('Teste não liberado.');
       if (isTestFeito(patient.tests_feitos, testCode)) { redirectToAreaPaciente(cpf); return; }
 
-      const { error: insertError } = await supabaseClient.from('respostas').insert([{ cpf, code: testCode, submitted_at: submittedAt, results: resultsPayload, results_meta: resultsMetaPayload }]);
+      const { error: insertError } = await supabaseClient.from('respostas').insert([{ cpf, code: testCode, submitted_at: submittedAt, results: [], results_meta: resultsMetaPayload }]);
       if (insertError) throw new Error(`Erro ao salvar respostas: ${insertError.message || ''}`.trim());
 
       const nextTestsFeitos = buildUpdatedTestsFeitos(patient.tests_feitos, testCode, submittedAt);
